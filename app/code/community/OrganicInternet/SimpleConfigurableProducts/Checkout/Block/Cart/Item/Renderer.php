@@ -2,7 +2,7 @@
 class OrganicInternet_SimpleConfigurableProducts_Checkout_Block_Cart_Item_Renderer
     extends Mage_Checkout_Block_Cart_Item_Renderer
 {
-    protected $_product;
+    protected $_items = array();
 
     protected function getConfigurableProductParentId()
     {
@@ -19,14 +19,15 @@ class OrganicInternet_SimpleConfigurableProducts_Checkout_Block_Cart_Item_Render
             ->load($this->getConfigurableProductParentId());
     }
 
-    public function getProduct()
+    public function getItemsProduct()
     {
-        if(!isset($this->_product)) {
-            $this->_product = Mage::getModel('catalog/product')
-                ->setStoreId(Mage::app()->getStore()->getId())
-                ->load($this->getItem()->getProductId());
+        if(!array_key_exists($this->getItem()->getId(), $this->_items)) {
+            $this->_items[$this->getItem()->getId()] =
+                Mage::getModel('catalog/product')
+                    ->setStoreId(Mage::app()->getStore()->getId())
+                    ->load($this->getItem()->getProductId());
         }
-        return $this->_product;
+        return $this->_items[$this->getItem()->getId()];
     }
 
     public function getProductName()
@@ -34,7 +35,7 @@ class OrganicInternet_SimpleConfigurableProducts_Checkout_Block_Cart_Item_Render
         if ($this->getConfigurableProductParentId()) {
             return $this->getConfigurableProductParent()->getName();
         } else {
-            return $this->getProduct()->getName();
+            return $this->getItemsProduct()->getSku().$this->getItemsProduct()->getName();
         }
     }
 
@@ -43,20 +44,26 @@ class OrganicInternet_SimpleConfigurableProducts_Checkout_Block_Cart_Item_Render
         if ($this->getConfigurableProductParentId()) {
             return $this->getConfigurableProductParent()->getProductUrl();
         } else {
-            return $this->getProduct()->getProductUrl();
+            return $this->getItemsProduct()->getProductUrl();
         }
+    }
+
+    public function getAttributesValue($attribute)
+    {
+        return $this->getItemsProduct()->getAttributeText($attribute->getAttributeCode());
     }
 
     public function getOptionList()
     {
-        $options = parent::getOptions();
+        $options = parent::getOptionList();
         $attributes = $this->getConfigurableProductParent()
             ->getTypeInstance()
             ->getUsedProductAttributes();
+
         foreach($attributes as $attribute) {
             $options[] = array(
                 'label' => $attribute->getFrontendLabel(),
-                'value' => $this->getProduct()->getAttributeText($attribute->getAttributeCode()),
+                'value' => $this->getAttributesValue($attribute),
                 'option_id' => $attribute->getId(),
             );
         }
@@ -66,7 +73,7 @@ class OrganicInternet_SimpleConfigurableProducts_Checkout_Block_Cart_Item_Render
     public function getProductThumbnail()
     {
         if ($this->getConfigurableProductParentId()) {
-            return $this->helper('catalog/image')->init($this->getProduct(), 'thumbnail');
+            return $this->helper('catalog/image')->init($this->getItemsProduct(), 'thumbnail');
         } else {
             return $this->helper('catalog/image')->init($this->getConfigurableProductParent(), 'thumbnail');
         }
